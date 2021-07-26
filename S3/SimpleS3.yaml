@@ -1,0 +1,16 @@
+# To deploy this template, run the following command from the yaml directory:
+# aws cloudformation deploy --template-file SimpleS3.yaml --parameter-overrides S3BucketName=test-simple-s3-bck  --stack-name simple-s3-test
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Bucket name for the S3 bucket resource
+    AllowedPattern: ^.*[^0-9]$
+    ConstraintDescription: Must end with non-numeric character.
+Resources:
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Ref S3BucketName # Use the !Ref keyword to get the value of a parameter
+

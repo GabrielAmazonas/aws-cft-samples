@@ -1,0 +1,30 @@
+
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  
+Resources:
+  RawGlueDatabase:
+    Type: AWS::Glue::Database
+    Properties:
+      CatalogId: !Ref AWS::AccountId #Example on querying AWS account parameter
+      DatabaseInput:
+        Description: "Glue Database created from s3 uri"
+        LocationUri: "s3:bucketname/google_bigquery/google_analytics"
+        Name: "test_glue_database_google_bigquery_raw"
+  
+  RawGlueCrawlerLFPermissions:
+    Type: AWS::LakeFormation::Permissions
+    Properties:
+      DataLakePrincipal:        
+        DataLakePrincipalIdentifier: "arn:aws:iam::650180341287:role/AmazonasGlueRole"      
+      Permissions:        
+        - ALTER        
+        - CREATE_TABLE        
+        - DROP      
+      PermissionsWithGrantOption:        
+        - ALTER        
+        - CREATE_TABLE        
+        - DROP      
+      Resource:        
+        DatabaseResource:          
+          Name: "test_glue_database_google_bigquery_raw"

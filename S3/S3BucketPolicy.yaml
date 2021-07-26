@@ -1,0 +1,36 @@
+# To deploy this template, run the following command from the yaml directory:
+# aws cloudformation deploy --template-file S3BucketPolicy.yaml --parameter-overrides S3BucketName=test-s3-bck-plc  --stack-name s3-bucket-policy-test
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Creates an S3 bucket and an S3 bucket policy that allows the bucket to be created by CloudFormation.'
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Name of an environment. 'dev', 'staging', 'prod' and any name.
+    AllowedPattern: ^.*[^0-9]$
+    ConstraintDescription: Must end with non-numeric character.
+Resources:
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref S3BucketName 
+      VersioningConfiguration:
+        Status: 'Enabled'
+  S3BucketPolicy:
+    Type: 'AWS::S3::BucketPolicy'
+    DependsOn: S3Bucket
+    Properties:
+      Bucket: !Sub ${S3Bucket} # Here we reference the variable from a previously created resource, instead of the parameter
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action:
+              - 's3:*' 
+            Resource:
+              - !Sub arn:aws:s3:::${S3Bucket}/*
+            Principal: '*'
+    
+
+
+      
