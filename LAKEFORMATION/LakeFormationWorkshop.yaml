@@ -1,0 +1,253 @@
+# aws cloudformation deploy --profile profile-name --template-file LakeFormationWorkshop.yaml --stack-name lake-formation-workshop --capabilities CAPABILITY_NAMED_IAM 
+Description: CloudFormation template to the required infrastructure
+  TestUserPassword:
+    Type: String
+    Default: Password1!
+    Description: Password for all test users.
+Resources:
+  GlueServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - glue.amazonaws.com
+            - lakeformation.amazonaws.com
+            - firehose.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSGlueServiceRole
+      - arn:aws:iam::aws:policy/AmazonKinesisFullAccess
+      Policies:
+      - PolicyName: LF-Data-Lake-Storage-Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:*
+            Resource:
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Ref: DataLakeBucket
+                - "/*"
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Ref: DataLakeBucket
+      - PolicyName: Glue-Demo-Access-Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:*
+            Resource:
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Ref: LFWorkshopBucket
+                - "/*"
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Ref: LFWorkshopBucket
+      - PolicyName: LF-DataAccess-Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - lakeformation:GetDataAccess
+            - lakeformation:GrantPermissions
+            Resource: "*"
+      - PolicyName: LF-Workflow-Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - iam:PassRole
+            Resource:
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:iam::'
+                - Ref: AWS::AccountId
+                - ":role/LF-GlueServiceRole"
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:iam::'
+                - Ref: AWS::AccountId
+                - ":role/LakeFormationWorkflowRole"
+      RoleName: LF-GlueServiceRole
+ 
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - firehose.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AmazonKinesisFirehoseFullAccess
+      Policies:
+      - PolicyName: LF-Stream-Data-Storage-Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:*
+            Resource:
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Ref: DataLakeBucket
+                - "/*"
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Ref: DataLakeBucket
+      RoleName: LF-KinesisServiceRole
+  DataLakeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Join:
+        - "-"
+        - - lf-data-lake
+          - Ref: AWS::AccountId
+  LFWorkshopBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Join:
+        - "-"
+        - - lf-workshop
+          - Ref: AWS::AccountId
+  AdminUser:
+    Type: AWS::IAM::User
+    Properties:
+      Path: "/"
+      LoginProfile:
+        Password:
+          Ref: TestUserPassword
+        PasswordResetRequired: false
+      Policies:
+      - PolicyName: LF-DataLake-Admin-Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - lakeformation:*
+            - cloudtrail:DescribeTrails
+            - cloudtrail:LookupEvents
+            - glue:GetDatabase
+            - glue:CreateDatabase
+            - glue:UpdateDatabase
+            - glue:DeleteDatabase
+            - glue:SearchTables
+            - glue:CreateTable
+            - glue:UpdateTable
+            - glue:DeleteTable
+            - glue:Get*
+            - glue:List*
+            - glue:BatchGetWorkflows
+            - glue:DeleteWorkflow
+            - glue:GetWorkflowRuns
+            - glue:StartWorkflowRun
+            - glue:GetWorkflow
+            - s3:ListBucket
+            - s3:GetBucketLocation
+            - s3:ListAllMyBuckets
+            - s3:GetBucketAcl
+            # Here the user is allowed to interact with the service linked role in IAM
+            - iam:CreateServiceLinkedRole
+            - iam:ListUsers
+            - iam:ListRoles
+            - iam:GetRole
+            - iam:GetRolePolicy\
+            # Here the user is allowed to Put a Role Policy to a role
+            - iam:PutRolePolicy
+            - cloudformation:*
+            - elasticmapreduce:*
+            - tag:Get*
+            - glue:BatchGetCrawlers
+            - ec2:AuthorizeSecurityGroupEgress
+            - ec2:AuthorizeSecurityGroupIngress
+            - ec2:RevokeSecurityGroupEgress
+            - ec2:RevokeSecurityGroupIngress
+            Resource: "*"
+          - Effect: Allow
+            Action: iam:PassRole
+            Resource:
+            - arn:aws:iam::*:role/LF-GlueServiceRole
+            - arn:aws:iam::*:role/LF-EMR-Notebook*
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSLakeFormationCrossAccountManager
+      - arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess
+      UserName: lf-admin
+  DeveloperUser:
+    Type: AWS::IAM::User
+    Properties:
+      Path: "/"
+      LoginProfile:
+        Password:
+          Ref: TestUserPassword
+        PasswordResetRequired: false
+      Policies:
+      - PolicyName: LF-Athena-Query-Result-Policy
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:Put*
+            - s3:Get*
+            - s3:List*
+            Resource:
+            - Fn::Join:
+              - ''
+              - - 'arn:aws:s3:::'
+                - Ref: LFWorkshopBucket
+                - "/athena-results/*"
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AmazonAthenaFullAccess
+      UserName: lf-developer
+Outputs:
+  LFDataLakeBucketName:
+    Description: Lake Formation Data Lake Bucket Name
+    Value:
+      Ref: DataLakeBucket
+  LFWorkshopBucketName:
+    Description: Lake Formation Workshop Bucket Name
+    Value:
+      Ref: LFWorkshopBucket
+  AthenaQueryResultLocation:
+    Description: Athena Query Result Location
+    Value:
+      Fn::Join:
+      - ''
+      - - s3://
+        - Ref: LFWorkshopBucket
+        - "/athena-results/"
+  LFUsersPassword:
+    Description: Password for Data Lake Users
+    Value:
+      Ref: TestUserPassword
+  ConsoleIAMLoginUrl:
+    Description: Console IAM Login URL to try out different users
+    Value:
+      Fn::Join:
+      - ''
+      - - https://
+        - Ref: AWS::AccountId
+        - ".signin.aws.amazon.com/console"

@@ -11,6 +11,8 @@ Resources:
   S3Bucket:
     Type: AWS::S3::Bucket
     Properties:
-      AccessControl: PublicRead
-      BucketName: !Ref S3BucketName # Use the !Ref keyword to get the value of a parameter
-
+      BucketName:
+        Fn::Join: # Here we join a parameter with a Cloud Formation Template default variable
+        - "-"
+        - - Ref: S3BucketName
+          - Ref: AWS::AccountId

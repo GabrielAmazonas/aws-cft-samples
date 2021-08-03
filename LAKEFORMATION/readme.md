@@ -1,0 +1,1 @@
+https://lakeformation.workshop.aws/how-to-start/self-paced/cloudformation.html

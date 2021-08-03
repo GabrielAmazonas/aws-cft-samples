@@ -1,22 +1,56 @@
-
-AWSTemplateFormatVersion: '2010-09-09'
+# aws cloudformation deploy --profile profile-name --template-file GlueCrawlerPermissions.yaml --stack-name glue-crawler-permissions --capabilities CAPABILITY_NAMED_IAM 
 Parameters:
-  
+  DatabaseLocation:  
+    Type: String
+    Description: S3 URI Location to create a Glue Database from. 
+    AllowedPattern: ^.*[^0-9]$
+    ConstraintDescription: Must end with non-numeric character.
+  DatabaseName:
+    Type: String
+    Description: Desired name of the database to be created.
+    AllowedPattern: ^.*[^0-9]$  
+    ConstraintDescription: Must end with non-numeric character. 
 Resources:
-  RawGlueDatabase:
+  GlueJobRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "glue.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: "root"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action: "*"
+                Resource: "*"
+  GlueDatabase:
     Type: AWS::Glue::Database
     Properties:
       CatalogId: !Ref AWS::AccountId #Example on querying AWS account parameter
       DatabaseInput:
         Description: "Glue Database created from s3 uri"
-        LocationUri: "s3:bucketname/google_bigquery/google_analytics"
-        Name: "test_glue_database_google_bigquery_raw"
-  
-  RawGlueCrawlerLFPermissions:
+        LocationUri: !Ref DatabaseLocation
+        Name: !Ref DatabaseName
+  GlueCrawlerLFPermissions:
     Type: AWS::LakeFormation::Permissions
+    DependsOn: 
+      - GlueDatabase
+      - GlueJobRole
     Properties:
       DataLakePrincipal:        
-        DataLakePrincipalIdentifier: "arn:aws:iam::650180341287:role/AmazonasGlueRole"      
+        DataLakePrincipalIdentifier: !Ref GlueJobRole
       Permissions:        
         - ALTER        
         - CREATE_TABLE        
@@ -27,4 +61,4 @@ Resources:
         - DROP      
       Resource:        
         DatabaseResource:          
-          Name: "test_glue_database_google_bigquery_raw"
+          Name: !Ref DatabaseName

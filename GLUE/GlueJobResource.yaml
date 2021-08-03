@@ -1,0 +1,56 @@
+# aws cloudformation deploy --profile profile-name --template-file GlueJobResource.yaml --stack-name glue-job-resource --capabilities CAPABILITY_NAMED_IAM 
+Description: "AWS Glue Job Test"
+Parameters:
+  S3BucketName:
+    Type: String
+    Description: Bucket name for the S3 bucket resource
+    AllowedPattern: ^.*[^0-9]$
+    ConstraintDescription: Must end with non-numeric character.
+Resources:
+  MyJobRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          -
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "glue.amazonaws.com"
+            Action:
+              - "sts:AssumeRole"
+      Path: "/"
+      Policies:
+        -
+          PolicyName: "root"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              -
+                Effect: "Allow"
+                Action: "*"
+                Resource: "*"
+  MyBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName:
+        Fn::Join:
+        - "-"
+        - - Ref: S3BucketName
+          - Ref: AWS::AccountId
+  MyJob:
+    Type: AWS::Glue::Job
+    Properties:
+      Command:
+        Name: glueetl
+        ScriptLocation: "s3://glue-etl-bucket-650180341287/etl.py"
+      DefaultArguments:
+        "--job-bookmark-option": "job-bookmark-enable"
+      ExecutionProperty:
+        MaxConcurrentRuns: 2
+      MaxRetries: 0
+      Name: cf-job1
+      Role: !Ref MyJobRole
+
+  
